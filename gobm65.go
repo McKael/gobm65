@@ -1,11 +1,11 @@
 package main
 
 import (
-	"io"
 	"fmt"
+	"io"
 	"log"
 
-	"github.com/tarm/goserial"
+	"github.com/tarm/serial"
 )
 
 type measurement struct {
