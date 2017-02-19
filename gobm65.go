@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"time"
 
 	flag "github.com/docker/docker/pkg/mflag"
 	"github.com/tarm/serial"
@@ -159,10 +160,30 @@ func mergeItems(newItems, oldItems []measurement) []measurement {
 	return result
 }
 
+func parseDate(dateStr string) (date time.Time, err error) {
+	if dateStr == "" {
+		return
+	}
+
+	var yy, mm, dd, h, m, s int
+	n, e := fmt.Sscanf(dateStr, "%d-%d-%d %d:%d:%d", &yy, &mm, &dd, &h, &m, &s)
+	if e != nil && n < 3 {
+		err = e
+		return
+	}
+	if n < 6 {
+		log.Printf("Date parsed with only %d fields\n", n)
+	}
+	date = time.Date(yy, time.Month(mm), dd, h, m, s, 0, time.Local)
+	return
+}
+
 func main() {
 	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
 	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
-	limit := flag.Uint([]string{"-limit", "l"}, 0, "Limit number of items")
+	limit := flag.Uint([]string{"-limit", "l"}, 0, "Limit number of items to N first")
+	since := flag.String([]string{"-since"}, "",
+		"Filter records from date (YYYY-mm-dd HH:MM:SS)")
 	format := flag.String([]string{"-format", "f"}, "", "Output format (csv, json)")
 	avg := flag.Bool([]string{"-average", "a"}, false, "Compute average")
 	merge := flag.Bool([]string{"-merge", "m"}, false,
@@ -183,7 +204,11 @@ func main() {
 		log.Fatal("Unknown output format.  Possible choices are csv, json.")
 	}
 
-	var err error
+	startDate, err := parseDate(*since)
+	if err != nil {
+		log.Fatal("Could not parse date: ", err)
+	}
+
 	var items []measurement
 
 	if *inFile == "" {
@@ -204,6 +229,19 @@ func main() {
 			items = mergeItems(items, fileItems)
 		} else {
 			items = fileItems
+		}
+	}
+
+	if !startDate.IsZero() {
+		log.Printf("Filtering out records before %v...\n", startDate)
+		for i := range items {
+			iDate := time.Date(items[i].Year, time.Month(items[i].Month),
+				items[i].Day, items[i].Hour, items[i].Minute, 0, 0,
+				time.Local)
+			if iDate.Sub(startDate) < 0 {
+				items = items[0:i]
+				break
+			}
 		}
 	}
 
