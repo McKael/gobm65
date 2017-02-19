@@ -1,4 +1,36 @@
+// Copyright (C) 2015-2017 Mikael Berthe <mikael@lilotux.net>. All rights reserved.
+// Use of this source code is governed by the MIT license,
+// which can be found in the LICENSE file.
+
+// gobm65 is a Beurer BM65 Blood Pressure Monitor CLI reader.
+
 package main
+
+// Examples:
+//
+// Get help:
+// % gobm65 --help
+//
+// Get records and display the average:
+// % gobm65 --average
+//
+// Display the latest 3 records with the average:
+// % gobm65 -l 3 --average
+// Display all records since a specific date:
+// % gobm65 --since "2016-06-01"
+// Display all records of the last 7 days:
+// % gobm65 --since "$(date "+%F" -d "7 days ago")"
+//
+// Display the last/first 10 records in JSON:
+// % gobm65 -l 10 --format json
+//
+// Save the records to a JSON file:
+// % gobm65 -o data_u2.json
+//
+// Read a JSON file and display average of the last 3 records:
+// % gobm65 -i data_u2.json -l 3 --average
+// Read a JSON file, merge with device records, and save to another file:
+// % gobm65 -i data_u2.json --merge -o data_u2-new.json
 
 import (
 	"encoding/json"
