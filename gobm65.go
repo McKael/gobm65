@@ -1,6 +1,9 @@
 // Copyright (C) 2015-2017 Mikael Berthe <mikael@lilotux.net>. All rights reserved.
 // Use of this source code is governed by the MIT license,
 // which can be found in the LICENSE file.
+//
+// Thanks to atbrask's blog post <http://www.atbrask.dk/?p=98> for the
+// protocol details.
 
 // gobm65 is a Beurer BM65 Blood Pressure Monitor CLI reader.
 
