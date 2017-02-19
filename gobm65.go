@@ -9,6 +9,10 @@
 
 package main
 
+// Installation:
+//
+// % go get hg.lilotux.net/golang/mikael/gobm65
+//
 // Examples:
 //
 // Get help:
