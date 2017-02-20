@@ -307,9 +307,12 @@ func main() {
 	}
 
 	if *avg && avgCount > 0 {
-		avgMeasure.Systolic /= avgCount
-		avgMeasure.Diastolic /= avgCount
-		avgMeasure.Pulse /= avgCount
+		roundDivision := func(a, b int) int {
+			return int(0.5 + float64(a)/float64(b))
+		}
+		avgMeasure.Systolic = roundDivision(avgMeasure.Systolic, avgCount)
+		avgMeasure.Diastolic = roundDivision(avgMeasure.Diastolic, avgCount)
+		avgMeasure.Pulse = roundDivision(avgMeasure.Pulse, avgCount)
 
 		fmt.Printf("Average: %d;%d;%d\n", avgMeasure.Systolic,
 			avgMeasure.Diastolic, avgMeasure.Pulse)
