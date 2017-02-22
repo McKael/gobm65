@@ -45,6 +45,8 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
+	"sort"
 	"time"
 
 	flag "github.com/docker/docker/pkg/mflag"
@@ -217,6 +219,91 @@ func parseDate(dateStr string) (date time.Time, err error) {
 	return
 }
 
+func average(items []measurement) (measurement, error) {
+	var avgMeasure measurement
+	var avgCount int
+
+	for _, data := range items {
+		avgMeasure.Systolic += data.Systolic
+		avgMeasure.Diastolic += data.Diastolic
+		avgMeasure.Pulse += data.Pulse
+		avgCount++
+	}
+
+	roundDivision := func(a, b int) int {
+		return int(0.5 + float64(a)/float64(b))
+	}
+
+	if avgCount == 0 {
+		return avgMeasure, fmt.Errorf("cannot compute average: empty set")
+	}
+
+	avgMeasure.Systolic = roundDivision(avgMeasure.Systolic, avgCount)
+	avgMeasure.Diastolic = roundDivision(avgMeasure.Diastolic, avgCount)
+	avgMeasure.Pulse = roundDivision(avgMeasure.Pulse, avgCount)
+
+	return avgMeasure, nil
+}
+
+func intMedian(numbers []int) int {
+	middle := len(numbers) / 2
+	med := numbers[middle]
+	if len(numbers)%2 == 0 {
+		med = (med + numbers[middle-1]) / 2
+	}
+	return med
+}
+
+func median(items []measurement) (measurement, error) {
+	var med measurement
+	if len(items) == 0 {
+		return med, fmt.Errorf("cannot compute average: empty set")
+	}
+
+	var sys, dia, pul []int
+	for _, data := range items {
+		sys = append(sys, data.Systolic)
+		dia = append(dia, data.Diastolic)
+		pul = append(pul, data.Pulse)
+	}
+
+	sort.Ints(sys)
+	sort.Ints(dia)
+	sort.Ints(pul)
+
+	med.Systolic = intMedian(sys)
+	med.Diastolic = intMedian(dia)
+	med.Pulse = intMedian(pul)
+
+	return med, nil
+}
+
+func stdDeviation(items []measurement) (measurement, error) {
+	var sDev measurement
+
+	if len(items) <= 1 {
+		return sDev, fmt.Errorf("cannot compute deviation: set too small")
+	}
+
+	var sumSys, sumDia, sumPul float64
+	avg, err := average(items)
+	if err != nil {
+		return sDev, err
+	}
+
+	for _, data := range items {
+		sumSys += math.Pow(float64(data.Systolic-avg.Systolic), 2)
+		sumDia += math.Pow(float64(data.Diastolic-avg.Diastolic), 2)
+		sumPul += math.Pow(float64(data.Pulse-avg.Pulse), 2)
+	}
+
+	sDev.Systolic = int(math.Sqrt(sumSys / float64(len(items)-1)))
+	sDev.Diastolic = int(math.Sqrt(sumDia / float64(len(items)-1)))
+	sDev.Pulse = int(math.Sqrt(sumPul / float64(len(items)-1)))
+
+	return sDev, nil
+}
+
 func main() {
 	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
 	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
@@ -225,6 +312,7 @@ func main() {
 		"Filter records from date (YYYY-mm-dd HH:MM:SS)")
 	format := flag.String([]string{"-format", "f"}, "", "Output format (csv, json)")
 	avg := flag.Bool([]string{"-average", "a"}, false, "Compute average")
+	stats := flag.Bool([]string{"-stats"}, false, "Compute statistics")
 	merge := flag.Bool([]string{"-merge", "m"}, false,
 		"Try to merge input JSON file with fetched data")
 	device := flag.String([]string{"-device", "d"}, "/dev/ttyUSB0", "Serial device")
@@ -288,34 +376,47 @@ func main() {
 		items = items[0:*limit]
 	}
 
-	var avgMeasure measurement
-	var avgCount int
-
-	for i, data := range items {
-		if *format == "csv" {
+	if *format == "csv" {
+		for i, data := range items {
 			fmt.Printf("%d;%x;%d-%02d-%02d %02d:%02d;%d;%d;%d\n",
 				i+1, data.Header,
 				data.Year, data.Month, data.Day,
 				data.Hour, data.Minute,
 				data.Systolic, data.Diastolic, data.Pulse)
 		}
-
-		avgMeasure.Systolic += data.Systolic
-		avgMeasure.Diastolic += data.Diastolic
-		avgMeasure.Pulse += data.Pulse
-		avgCount++
 	}
 
-	if *avg && avgCount > 0 {
-		roundDivision := func(a, b int) int {
-			return int(0.5 + float64(a)/float64(b))
-		}
-		avgMeasure.Systolic = roundDivision(avgMeasure.Systolic, avgCount)
-		avgMeasure.Diastolic = roundDivision(avgMeasure.Diastolic, avgCount)
-		avgMeasure.Pulse = roundDivision(avgMeasure.Pulse, avgCount)
+	if *stats {
+		*avg = true
+	}
 
-		fmt.Printf("Average: %d;%d;%d\n", avgMeasure.Systolic,
-			avgMeasure.Diastolic, avgMeasure.Pulse)
+	if *avg && len(items) > 0 {
+		avgMeasure, err := average(items)
+		if err != nil {
+			log.Println("Error:", err)
+		} else {
+			fmt.Printf("Average: %d;%d;%d\n", avgMeasure.Systolic,
+				avgMeasure.Diastolic, avgMeasure.Pulse)
+		}
+	}
+
+	if *stats && len(items) > 1 {
+		d, err := stdDeviation(items)
+		if err != nil {
+			log.Println("Error:", err)
+		} else {
+			fmt.Printf("Standard deviation: %d;%d;%d\n",
+				d.Systolic, d.Diastolic, d.Pulse)
+		}
+	}
+	if *stats && len(items) > 0 {
+		m, err := median(items)
+		if err != nil {
+			log.Println("Error:", err)
+		} else {
+			fmt.Printf("Median values: %d;%d;%d\n",
+				m.Systolic, m.Diastolic, m.Pulse)
+		}
 	}
 
 	if *format == "json" || *outFile != "" {
