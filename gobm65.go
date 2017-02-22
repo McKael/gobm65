@@ -20,6 +20,8 @@ package main
 //
 // Get records and display the average:
 // % gobm65 --average
+// ... display more statistics:
+// % gobm65 --stats
 //
 // Display the latest 3 records with the average:
 // % gobm65 -l 3 --average
@@ -27,6 +29,11 @@ package main
 // % gobm65 --since "2016-06-01"
 // Display all records of the last 7 days:
 // % gobm65 --since "$(date "+%F" -d "7 days ago")"
+//
+// Display statistics for morning records:
+// % gobm65 --from-time 06:00 --to-time 12:00 --stats
+// One can invert times to get night data:
+// % gobm65 --from-time 21:00 --to-time 09:00
 //
 // Display the last/first 10 records in JSON:
 // % gobm65 -l 10 --format json
@@ -36,6 +43,7 @@ package main
 //
 // Read a JSON file and display average of the last 3 records:
 // % gobm65 -i data_u2.json -l 3 --average
+// % gobm65 -i data_u2.json -l 3 --stats
 // Read a JSON file, merge with device records, and save to another file:
 // % gobm65 -i data_u2.json --merge -o data_u2-new.json
 
