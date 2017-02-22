@@ -65,6 +65,10 @@ type measurement struct {
 	Year      int
 }
 
+type simpleTime struct {
+	hour, minute int
+}
+
 func getData(s io.ReadWriteCloser, buf []byte, size int) (int, error) {
 	t := 0
 	b := buf
@@ -219,6 +223,11 @@ func parseDate(dateStr string) (date time.Time, err error) {
 	return
 }
 
+func parseTime(timeStr string) (t simpleTime, err error) {
+	_, err = fmt.Sscanf(timeStr, "%d:%d", &t.hour, &t.minute)
+	return
+}
+
 func average(items []measurement) (measurement, error) {
 	var avgMeasure measurement
 	var avgCount int
@@ -316,6 +325,10 @@ func main() {
 	merge := flag.Bool([]string{"-merge", "m"}, false,
 		"Try to merge input JSON file with fetched data")
 	device := flag.String([]string{"-device", "d"}, "/dev/ttyUSB0", "Serial device")
+	fromTime := flag.String([]string{"-from-time"}, "", "Select records after time (HH:MM)")
+	toTime := flag.String([]string{"-to-time"}, "", "Select records bofore time (HH:MM)")
+
+	var startTime, endTime simpleTime
 
 	flag.Parse()
 
@@ -331,12 +344,29 @@ func main() {
 		log.Fatal("Unknown output format.  Possible choices are csv, json.")
 	}
 
+	if *fromTime != "" {
+		if t, err := parseTime(*fromTime); err != nil {
+			log.Fatal("Cannot parse 'from' time: ", err)
+		} else {
+			startTime = t
+		}
+	}
+	if *toTime != "" {
+		if t, err := parseTime(*toTime); err != nil {
+			log.Fatal("Cannot parse 'to' time: ", err)
+		} else {
+			endTime = t
+		}
+	}
+
 	startDate, err := parseDate(*since)
 	if err != nil {
 		log.Fatal("Could not parse date: ", err)
 	}
 
 	var items []measurement
+
+	// Read data
 
 	if *inFile == "" {
 		// Read from device
@@ -359,6 +389,8 @@ func main() {
 		}
 	}
 
+	// Apply filters
+
 	if !startDate.IsZero() {
 		log.Printf("Filtering out records before %v...\n", startDate)
 		for i := range items {
@@ -372,9 +404,50 @@ func main() {
 		}
 	}
 
+	if *fromTime != "" || *toTime != "" {
+		log.Println("Filtering hours...")
+
+		compare := func(m measurement, t simpleTime) int {
+			if m.Hour*60+m.Minute < t.hour*60+t.minute {
+				return -1
+			}
+			if m.Hour*60+m.Minute > t.hour*60+t.minute {
+				return 1
+			}
+			return 0
+		}
+
+		inv := false
+		if *fromTime != "" && *toTime != "" &&
+			startTime.hour*60+startTime.minute > endTime.hour*60+endTime.minute {
+			inv = true
+		}
+
+		var newItems []measurement
+		for _, data := range items {
+			if inv {
+				if compare(data, startTime) == -1 && compare(data, endTime) == 1 {
+					continue
+				}
+				newItems = append(newItems, data)
+				continue
+			}
+			if *fromTime != "" && compare(data, startTime) == -1 {
+				continue
+			}
+			if *toTime != "" && compare(data, endTime) == 1 {
+				continue
+			}
+			newItems = append(newItems, data)
+		}
+		items = newItems
+	}
+
 	if *limit > 0 && len(items) > int(*limit) {
 		items = items[0:*limit]
 	}
+
+	// Done with filtering
 
 	if *format == "csv" {
 		for i, data := range items {
