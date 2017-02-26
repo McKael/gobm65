@@ -28,7 +28,7 @@ package main
 // Display all records since a specific date:
 // % gobm65 --since "2016-06-01"
 // Display all records before a specific date:
-// % gobm65 --before "2016-06-30"
+// % gobm65 --to-date "2016-06-30"
 // Display all records of the last 7 days:
 // % gobm65 --since "$(date "+%F" -d "7 days ago")"
 //
@@ -399,9 +399,9 @@ func main() {
 	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
 	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
 	limit := flag.Uint([]string{"-limit", "l"}, 0, "Limit number of items to N first")
-	before := flag.String([]string{"-before"}, "",
+	toDate := flag.String([]string{"-to-date"}, "",
 		"Filter records before date (YYYY-mm-dd HH:MM:SS)")
-	since := flag.String([]string{"-since", "-after"}, "",
+	fromDate := flag.String([]string{"-from-date", "-since"}, "",
 		"Filter records from date (YYYY-mm-dd HH:MM:SS)")
 	format := flag.String([]string{"-format", "f"}, "", "Output format (csv, json)")
 	avg := flag.Bool([]string{"-average", "a"}, false, "Compute average")
@@ -443,12 +443,12 @@ func main() {
 		}
 	}
 
-	startDate, err := parseDate(*since)
+	startDate, err := parseDate(*fromDate)
 	if err != nil {
 		log.Fatal("Could not parse date: ", err)
 	}
 
-	endDate, err := parseDate(*before)
+	endDate, err := parseDate(*toDate)
 	if err != nil {
 		log.Fatal("Could not parse date: ", err)
 	}
