@@ -188,7 +188,7 @@ func fetchData(dev string) (items []measurement, err error) {
 	}
 
 	s.Close()
-	return items, nil
+	return mergeItems(items, []measurement{}), nil
 }
 
 func loadFromJSONFile(filename string) (items []measurement, err error) {
