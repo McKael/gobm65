@@ -235,28 +235,31 @@ func mergeItems(newItems, oldItems []measurement) []measurement {
 		return isLater(newItems[i], newItems[j])
 	})
 
-	appendIfMissing := func(l []measurement, m measurement) []measurement {
+	// insertIfMissing inserts a measurement into a sorted slice
+	insertIfMissing := func(l []measurement, m measurement) []measurement {
+		var later bool
 		var i int
 		for i = range l {
-			if !isLater(l[i], m) {
+			later = isLater(l[i], m)
+			if !later {
 				break
 			}
 			if l[i] == m { // Duplicate
 				return l
 			}
 		}
-		if i == len(l) {
-			return append(l[:i], m)
+		if later {
+			return append(l, m)
 		}
-		r := append(l[:i], append(l[i:], m)...)
-		return r
+
+		return append(l[:i], append([]measurement{m}, l[i:]...)...)
 	}
 
 	for _, item := range newItems {
-		result = appendIfMissing(result, item)
+		result = insertIfMissing(result, item)
 	}
 	for _, item := range oldItems {
-		result = appendIfMissing(result, item)
+		result = insertIfMissing(result, item)
 	}
 	return result
 }
