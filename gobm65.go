@@ -397,7 +397,9 @@ func main() {
 	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
 	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
 	limit := flag.Uint([]string{"-limit", "l"}, 0, "Limit number of items to N first")
-	since := flag.String([]string{"-since"}, "",
+	before := flag.String([]string{"-before"}, "",
+		"Filter records before date (YYYY-mm-dd HH:MM:SS)")
+	since := flag.String([]string{"-since", "-after"}, "",
 		"Filter records from date (YYYY-mm-dd HH:MM:SS)")
 	format := flag.String([]string{"-format", "f"}, "", "Output format (csv, json)")
 	avg := flag.Bool([]string{"-average", "a"}, false, "Compute average")
@@ -444,6 +446,11 @@ func main() {
 		log.Fatal("Could not parse date: ", err)
 	}
 
+	endDate, err := parseDate(*before)
+	if err != nil {
+		log.Fatal("Could not parse date: ", err)
+	}
+
 	var items []measurement
 
 	// Read data
@@ -479,6 +486,19 @@ func main() {
 				time.Local)
 			if iDate.Sub(startDate) < 0 {
 				items = items[0:i]
+				break
+			}
+		}
+	}
+
+	if !endDate.IsZero() {
+		log.Printf("Filtering out records after %v...\n", endDate)
+		for i := range items {
+			iDate := time.Date(items[i].Year, time.Month(items[i].Month),
+				items[i].Day, items[i].Hour, items[i].Minute, 0, 0,
+				time.Local)
+			if iDate.Sub(endDate) <= 0 {
+				items = items[i:]
 				break
 			}
 		}
