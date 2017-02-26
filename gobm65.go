@@ -27,6 +27,8 @@ package main
 // % gobm65 -l 3 --average
 // Display all records since a specific date:
 // % gobm65 --since "2016-06-01"
+// Display all records before a specific date:
+// % gobm65 --before "2016-06-30"
 // Display all records of the last 7 days:
 // % gobm65 --since "$(date "+%F" -d "7 days ago")"
 //
