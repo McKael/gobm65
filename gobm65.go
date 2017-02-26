@@ -46,6 +46,9 @@ package main
 // % gobm65 -i data_u2.json -l 3 --stats
 // Read a JSON file, merge with device records, and save to another file:
 // % gobm65 -i data_u2.json --merge -o data_u2-new.json
+//
+// Data from several JSON files can be merged, files are separated with a ';':
+// % gobm65 -i "data_u0.json;data_u1.json;data_u2.json"
 
 import (
 	"encoding/json"
@@ -55,6 +58,7 @@ import (
 	"log"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	flag "github.com/docker/docker/pkg/mflag"
@@ -195,6 +199,23 @@ func loadFromJSONFile(filename string) (items []measurement, err error) {
 
 	err = json.Unmarshal(data, &items)
 	return items, err
+}
+
+func loadFromJSONFiles(files string) (items []measurement, err error) {
+	filenames := strings.Split(files, ";")
+
+	for _, f := range filenames {
+		if f == "" {
+			continue
+		}
+		records, err := loadFromJSONFile(f)
+		if err != nil {
+			return items, err
+		}
+		items = mergeItems(records, items)
+	}
+
+	return
 }
 
 func mergeItems(newItems, oldItems []measurement) []measurement {
@@ -435,7 +456,7 @@ func main() {
 	} else {
 		// Read from file
 		var fileItems []measurement
-		if fileItems, err = loadFromJSONFile(*inFile); err != nil {
+		if fileItems, err = loadFromJSONFiles(*inFile); err != nil {
 			log.Fatal(err)
 		}
 		if *merge {
