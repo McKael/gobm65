@@ -199,16 +199,63 @@ func loadFromJSONFile(filename string) (items []measurement, err error) {
 
 func mergeItems(newItems, oldItems []measurement) []measurement {
 	var result []measurement
-	var j int
-	// TODO: Would be better to compare dates and merge chronologically...
-	for _, nItem := range newItems {
-		result = append(result, nItem)
-		if j+1 <= len(oldItems) && nItem == oldItems[j] {
-			j++
+
+	// Sort method: isLater returns true if mi's date is later or
+	// equal to mj's date.
+	isLater := func(mi, mj measurement) bool {
+		switch {
+		case mi.Year < mj.Year:
+			return false
+		case mi.Year > mj.Year:
+			return true
+		case mi.Month < mj.Month:
+			return false
+		case mi.Month > mj.Month:
+			return true
+		case mi.Day < mj.Day:
+			return false
+		case mi.Day > mj.Day:
+			return true
+		case mi.Hour < mj.Hour:
+			return false
+		case mi.Hour > mj.Hour:
+			return true
+		case mi.Minute < mj.Minute:
+			return false
+		default:
+			return true
 		}
 	}
-	if j+1 <= len(oldItems) {
-		result = append(result, oldItems[j:]...)
+
+	sort.Slice(oldItems, func(i, j int) bool {
+		return isLater(oldItems[i], oldItems[j])
+	})
+	sort.Slice(newItems, func(i, j int) bool {
+		return isLater(newItems[i], newItems[j])
+	})
+
+	appendIfMissing := func(l []measurement, m measurement) []measurement {
+		var i int
+		for i = range l {
+			if !isLater(l[i], m) {
+				break
+			}
+			if l[i] == m { // Duplicate
+				return l
+			}
+		}
+		if i == len(l) {
+			return append(l[:i], m)
+		}
+		r := append(l[:i], append(l[i:], m)...)
+		return r
+	}
+
+	for _, item := range newItems {
+		result = appendIfMissing(result, item)
+	}
+	for _, item := range oldItems {
+		result = appendIfMissing(result, item)
 	}
 	return result
 }
