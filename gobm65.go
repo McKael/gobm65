@@ -227,6 +227,7 @@ func mergeItems(newItems, oldItems []measurement) []measurement {
 		}
 	}
 
+	// Note that sort.Slice was introduced in go 1.8
 	sort.Slice(oldItems, func(i, j int) bool {
 		return isLater(oldItems[i], oldItems[j])
 	})
