@@ -395,6 +395,34 @@ func stdDeviation(items []measurement) (measurement, error) {
 	return sDev, nil
 }
 
+// avgAbsoluteDeviation computes the average absolute deviation (or Mean
+// Absolute Deviation) of the measurement set
+func avgAbsoluteDeviation(items []measurement) (measurement, error) {
+	var dev measurement
+
+	if len(items) <= 1 {
+		return dev, fmt.Errorf("cannot compute deviation: set too small")
+	}
+
+	var sumSys, sumDia, sumPul float64
+	avg, err := average(items)
+	if err != nil {
+		return dev, err
+	}
+
+	for _, data := range items {
+		sumSys += math.Abs(float64(data.Systolic - avg.Systolic))
+		sumDia += math.Abs(float64(data.Diastolic - avg.Diastolic))
+		sumPul += math.Abs(float64(data.Pulse - avg.Pulse))
+	}
+
+	dev.Systolic = int(sumSys / float64(len(items)))
+	dev.Diastolic = int(sumDia / float64(len(items)))
+	dev.Pulse = int(sumPul / float64(len(items)))
+
+	return dev, nil
+}
+
 func main() {
 	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
 	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
@@ -581,6 +609,13 @@ func main() {
 			log.Println("Error:", err)
 		} else {
 			fmt.Printf("Standard deviation: %d;%d;%d\n",
+				d.Systolic, d.Diastolic, d.Pulse)
+		}
+		d, err = avgAbsoluteDeviation(items)
+		if err != nil {
+			log.Println("Error:", err)
+		} else {
+			fmt.Printf("Average absolute deviation: %d;%d;%d\n",
 				d.Systolic, d.Diastolic, d.Pulse)
 		}
 	}
