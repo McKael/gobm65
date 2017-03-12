@@ -388,9 +388,9 @@ func stdDeviation(items []measurement) (measurement, error) {
 		sumPul += math.Pow(float64(data.Pulse-avg.Pulse), 2)
 	}
 
-	sDev.Systolic = int(math.Sqrt(sumSys / float64(len(items)-1)))
-	sDev.Diastolic = int(math.Sqrt(sumDia / float64(len(items)-1)))
-	sDev.Pulse = int(math.Sqrt(sumPul / float64(len(items)-1)))
+	sDev.Systolic = int(math.Sqrt(sumSys / float64(len(items))))
+	sDev.Diastolic = int(math.Sqrt(sumDia / float64(len(items))))
+	sDev.Pulse = int(math.Sqrt(sumPul / float64(len(items))))
 
 	return sDev, nil
 }
