@@ -22,6 +22,8 @@ package main
 // % gobm65 --average
 // ... display more statistics:
 // % gobm65 --stats
+// ... also display World Health Organization classification:
+// % gobm65 --stats --class
 //
 // Display the latest 3 records with the average:
 // % gobm65 -l 3 --average
@@ -81,6 +83,27 @@ type measurement struct {
 
 type simpleTime struct {
 	hour, minute int
+}
+
+// World Heath Organization blood pressure classification
+const (
+	BPOptimal              = iota // < 120,80:  Optimal
+	BPNormal                      // < 130,85:  Normal
+	BPHighNormal                  // < 140,90:  High-Normal
+	BPMildHypertension            // < 160,100: Mild Hypertension
+	BPModerateHypertension        // < 180,110: Moderate Hypertension
+	BPSevereHypertension          // >=180,110: Severe Hypertension
+)
+
+// WHOPressureClassification contains the World Health Organization blood
+// pressure categories
+var WHOPressureClassification = []string{
+	"Optimal",
+	"Normal",
+	"High-Normal",
+	"Mild Hypertension",
+	"Moderate Hypertension",
+	"Severe Hypertension",
 }
 
 func getData(s io.ReadWriteCloser, buf []byte, size int) (int, error) {
@@ -423,6 +446,46 @@ func avgAbsoluteDeviation(items []measurement) (measurement, error) {
 	return dev, nil
 }
 
+func (m measurement) WHOClass() int {
+	switch {
+	case m.Systolic < 120 && m.Diastolic < 80:
+		return BPOptimal
+	case m.Systolic < 130 && m.Diastolic < 85:
+		return BPNormal
+	case m.Systolic < 140 && m.Diastolic < 90:
+		return BPHighNormal
+	case m.Systolic < 160 && m.Diastolic < 100:
+		return BPMildHypertension
+	case m.Systolic < 180 && m.Diastolic < 110:
+		return BPModerateHypertension
+	}
+	return BPSevereHypertension
+}
+
+func (m measurement) WHOClassString() string {
+	return WHOPressureClassification[m.WHOClass()]
+}
+
+func displayWHOClassStats(items []measurement) {
+	sum := 0
+	classes := make(map[int]int)
+	for _, m := range items {
+		s := m.WHOClass()
+		classes[s]++
+		sum += s
+	}
+
+	avg := float64(sum) / float64(len(items))
+	fmt.Printf("Average WHO classification: %s (%.2f)\n",
+		WHOPressureClassification[int(0.5+avg)], avg)
+
+	for c := range WHOPressureClassification {
+		fmt.Printf(" . %21s: %3d (%d%%)\n",
+			WHOPressureClassification[c], classes[c],
+			classes[c]*100/len(items))
+	}
+}
+
 func main() {
 	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
 	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
@@ -434,6 +497,7 @@ func main() {
 	format := flag.String([]string{"-format", "f"}, "", "Output format (csv, json)")
 	avg := flag.Bool([]string{"-average", "a"}, false, "Compute average")
 	stats := flag.Bool([]string{"-stats"}, false, "Compute statistics")
+	whoClass := flag.Bool([]string{"-class", "c"}, false, "Display WHO classification")
 	merge := flag.Bool([]string{"-merge", "m"}, false,
 		"Try to merge input JSON file with fetched data")
 	device := flag.String([]string{"-device", "d"}, "/dev/ttyUSB0", "Serial device")
@@ -581,11 +645,15 @@ func main() {
 
 	if *format == "csv" {
 		for i, data := range items {
-			fmt.Printf("%d;%x;%d-%02d-%02d %02d:%02d;%d;%d;%d\n",
+			fmt.Printf("%d;%x;%d-%02d-%02d %02d:%02d;%d;%d;%d",
 				i+1, data.Header,
 				data.Year, data.Month, data.Day,
 				data.Hour, data.Minute,
 				data.Systolic, data.Diastolic, data.Pulse)
+			if *whoClass {
+				fmt.Printf(";%s", data.WHOClassString())
+			}
+			fmt.Println()
 		}
 	}
 
@@ -598,8 +666,12 @@ func main() {
 		if err != nil {
 			log.Println("Error:", err)
 		} else {
-			fmt.Printf("Average: %d;%d;%d\n", avgMeasure.Systolic,
+			fmt.Printf("Average: %d;%d;%d", avgMeasure.Systolic,
 				avgMeasure.Diastolic, avgMeasure.Pulse)
+			if *whoClass {
+				fmt.Printf("  [%s]", avgMeasure.WHOClassString())
+			}
+			fmt.Println()
 		}
 	}
 
@@ -624,8 +696,16 @@ func main() {
 		if err != nil {
 			log.Println("Error:", err)
 		} else {
-			fmt.Printf("Median values: %d;%d;%d\n",
+			fmt.Printf("Median values: %d;%d;%d",
 				m.Systolic, m.Diastolic, m.Pulse)
+			if *whoClass {
+				fmt.Printf("  [%s]", m.WHOClassString())
+			}
+			fmt.Println()
+		}
+
+		if *whoClass {
+			displayWHOClassStats(items)
 		}
 	}
 
