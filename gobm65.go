@@ -91,9 +91,15 @@ const (
 	BPOptimal              = iota // < 120,80:  Optimal
 	BPNormal                      // < 130,85:  Normal
 	BPHighNormal                  // < 140,90:  High-Normal
-	BPMildHypertension            // < 160,100: Mild Hypertension
-	BPModerateHypertension        // < 180,110: Moderate Hypertension
-	BPSevereHypertension          // >=180,110: Severe Hypertension
+	BPMildHypertension            // < 160,100: Grade 1 Mild Hypertension
+	BPModerateHypertension        // < 180,110: Grade 2 Moderate Hypertension
+	BPSevereHypertension          // >=180,110: Grade 3 Severe Hypertension
+)
+
+// Special cases that do not fit in the previous classification
+const (
+	// >=140, <90: Isolated Systolic Hypertension
+	IsolatedSystolicHypertension = 1
 )
 
 // WHOPressureClassification contains the World Health Organization blood
@@ -105,6 +111,12 @@ var WHOPressureClassification = []string{
 	"Mild Hypertension",
 	"Moderate Hypertension",
 	"Severe Hypertension",
+}
+
+// WHOPressureFlag is an array of special cases
+var WHOPressureFlag = []string{
+	"",
+	"Isolated Systolic Hypertension",
 }
 
 func getData(s io.ReadWriteCloser, buf []byte, size int) (int, error) {
@@ -447,36 +459,50 @@ func avgAbsoluteDeviation(items []measurement) (measurement, error) {
 	return dev, nil
 }
 
-func (m measurement) WHOClass() int {
+func (m measurement) WHOClass() (int, int) {
+	flag := 0
+
+	if m.Systolic >= 140 && m.Diastolic < 90 {
+		flag = IsolatedSystolicHypertension
+	}
+
 	switch {
 	case m.Systolic < 120 && m.Diastolic < 80:
-		return BPOptimal
+		return BPOptimal, flag
 	case m.Systolic < 130 && m.Diastolic < 85:
-		return BPNormal
+		return BPNormal, flag
 	case m.Systolic < 140 && m.Diastolic < 90:
-		return BPHighNormal
+		return BPHighNormal, flag
 	case m.Systolic < 160 && m.Diastolic < 100:
-		return BPMildHypertension
+		return BPMildHypertension, flag
 	case m.Systolic < 180 && m.Diastolic < 110:
-		return BPModerateHypertension
+		return BPModerateHypertension, flag
 	}
-	return BPSevereHypertension
+	return BPSevereHypertension, flag
 }
 
 func (m measurement) WHOClassString() string {
-	return WHOPressureClassification[m.WHOClass()]
+	flagStr := ""
+	class, flag := m.WHOClass()
+	if flag == IsolatedSystolicHypertension {
+		flagStr = " (" + WHOPressureFlag[flag] + ")"
+	}
+	return WHOPressureClassification[class] + flagStr
 }
 
 func displayWHOClassStats(items []measurement) {
-	sum := 0
+	sum := 0.0
 	classes := make(map[int]int)
 	for _, m := range items {
-		s := m.WHOClass()
+		s, flag := m.WHOClass()
 		classes[s]++
-		sum += s
+		sum += float64(s)
+		if flag == IsolatedSystolicHypertension {
+			sum += 0.5
+		}
 	}
 
-	avg := float64(sum) / float64(len(items))
+	avg := sum / float64(len(items))
 	fmt.Fprintf(os.Stderr, "Average WHO classification: %s (%.2f)\n",
 		WHOPressureClassification[int(0.5+avg)], avg)
 
