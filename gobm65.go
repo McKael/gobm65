@@ -61,6 +61,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -476,11 +477,11 @@ func displayWHOClassStats(items []measurement) {
 	}
 
 	avg := float64(sum) / float64(len(items))
-	fmt.Printf("Average WHO classification: %s (%.2f)\n",
+	fmt.Fprintf(os.Stderr, "Average WHO classification: %s (%.2f)\n",
 		WHOPressureClassification[int(0.5+avg)], avg)
 
 	for c := range WHOPressureClassification {
-		fmt.Printf(" . %21s: %3d (%d%%)\n",
+		fmt.Fprintf(os.Stderr, " . %21s: %3d (%d%%)\n",
 			WHOPressureClassification[c], classes[c],
 			classes[c]*100/len(items))
 	}
@@ -666,12 +667,14 @@ func main() {
 		if err != nil {
 			log.Println("Error:", err)
 		} else {
-			fmt.Printf("Average: %d;%d;%d", avgMeasure.Systolic,
-				avgMeasure.Diastolic, avgMeasure.Pulse)
+			fmt.Fprintf(os.Stderr, "Average: %d;%d;%d",
+				avgMeasure.Systolic, avgMeasure.Diastolic,
+				avgMeasure.Pulse)
 			if *whoClass {
-				fmt.Printf("  [%s]", avgMeasure.WHOClassString())
+				fmt.Fprintf(os.Stderr, "  [%s]",
+					avgMeasure.WHOClassString())
 			}
-			fmt.Println()
+			fmt.Fprintln(os.Stderr)
 		}
 	}
 
@@ -680,14 +683,14 @@ func main() {
 		if err != nil {
 			log.Println("Error:", err)
 		} else {
-			fmt.Printf("Standard deviation: %d;%d;%d\n",
+			fmt.Fprintf(os.Stderr, "Standard deviation: %d;%d;%d\n",
 				d.Systolic, d.Diastolic, d.Pulse)
 		}
 		d, err = avgAbsoluteDeviation(items)
 		if err != nil {
 			log.Println("Error:", err)
 		} else {
-			fmt.Printf("Average absolute deviation: %d;%d;%d\n",
+			fmt.Fprintf(os.Stderr, "Average absolute deviation: %d;%d;%d\n",
 				d.Systolic, d.Diastolic, d.Pulse)
 		}
 	}
@@ -696,12 +699,12 @@ func main() {
 		if err != nil {
 			log.Println("Error:", err)
 		} else {
-			fmt.Printf("Median values: %d;%d;%d",
+			fmt.Fprintf(os.Stderr, "Median values: %d;%d;%d",
 				m.Systolic, m.Diastolic, m.Pulse)
 			if *whoClass {
-				fmt.Printf("  [%s]", m.WHOClassString())
+				fmt.Fprintf(os.Stderr, "  [%s]", m.WHOClassString())
 			}
-			fmt.Println()
+			fmt.Fprintln(os.Stderr)
 		}
 
 		if *whoClass {
