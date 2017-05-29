@@ -66,7 +66,7 @@ import (
 	"strings"
 	"time"
 
-	flag "github.com/docker/docker/pkg/mflag"
+	flag "github.com/spf13/pflag"
 	"github.com/tarm/serial"
 )
 
@@ -514,22 +514,21 @@ func displayWHOClassStats(items []measurement) {
 }
 
 func main() {
-	inFile := flag.String([]string{"-input-file", "i"}, "", "Input JSON file")
-	outFile := flag.String([]string{"-output-file", "o"}, "", "Output JSON file")
-	limit := flag.Uint([]string{"-limit", "l"}, 0, "Limit number of items to N first")
-	toDate := flag.String([]string{"-to-date"}, "",
-		"Filter records before date (YYYY-mm-dd HH:MM:SS)")
-	fromDate := flag.String([]string{"-from-date", "-since"}, "",
-		"Filter records from date (YYYY-mm-dd HH:MM:SS)")
-	format := flag.String([]string{"-format", "f"}, "", "Output format (csv, json)")
-	avg := flag.Bool([]string{"-average", "a"}, false, "Compute average")
-	stats := flag.Bool([]string{"-stats"}, false, "Compute statistics")
-	whoClass := flag.Bool([]string{"-class", "c"}, false, "Display WHO classification")
-	merge := flag.Bool([]string{"-merge", "m"}, false,
-		"Try to merge input JSON file with fetched data")
-	device := flag.String([]string{"-device", "d"}, "/dev/ttyUSB0", "Serial device")
-	fromTime := flag.String([]string{"-from-time"}, "", "Select records after time (HH:MM)")
-	toTime := flag.String([]string{"-to-time"}, "", "Select records bofore time (HH:MM)")
+	inFile := flag.StringP("input-file", "i", "", "Input JSON file")
+	outFile := flag.StringP("output-file", "o", "", "Output JSON file")
+	limit := flag.UintP("limit", "l", 0, "Limit number of items to N first")
+	toDate := flag.String("to-date", "", "Filter records before date (YYYY-mm-dd HH:MM:SS)")
+	fromDate := flag.String("from-date", "", "Filter records from date (YYYY-mm-dd HH:MM:SS)")
+	format := flag.StringP("format", "f", "", "Output format (csv, json)")
+	avg := flag.BoolP("average", "a", false, "Compute average")
+	stats := flag.Bool("stats", false, "Compute statistics")
+	whoClass := flag.BoolP("class", "c", false, "Display WHO classification")
+	merge := flag.BoolP("merge", "m", false, "Try to merge input JSON file with fetched data")
+	device := flag.StringP("device", "d", "/dev/ttyUSB0", "Serial device")
+	fromTime := flag.String("from-time", "", "Select records after time (HH:MM)")
+	toTime := flag.String("to-time", "", "Select records bofore time (HH:MM)")
+
+	flag.StringVar(fromDate, "since", "", "Same as --from-date")
 
 	var startTime, endTime simpleTime
 
