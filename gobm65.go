@@ -129,7 +129,7 @@ func getData(s io.ReadWriteCloser, buf []byte, size int) (int, error) {
 			return t, err
 		}
 		//log.Printf("(%d bytes) %q\n", n, b[t:t+1])
-		t = t + n
+		t += n
 	}
 	return t, nil
 }
